@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>粒子数涨落</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  --page:#e9ecee; --paper:#fff; --ink:#29343b; --muted:#6d7c85;
+  --rule:#dce2e5; --blue:#397591; --copper:#b47a55; --green:#507c6b;
+  --stage:#252e34; --font:"Microsoft YaHei UI","Microsoft YaHei","PingFang SC","Noto Sans CJK SC","Segoe UI",sans-serif;
+  --number:"Segoe UI","Microsoft YaHei UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{font:13px var(--font);color:var(--ink);background:var(--page);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit;outline:none}
+button{cursor:pointer;transition:background .13s,border-color .13s,box-shadow .13s,transform .13s}
+button:disabled{cursor:default;opacity:.45}
+button:focus,select:focus{outline:2px solid #739eb5;outline-offset:3px}
+button:focus:not(:focus-visible),select:focus:not(:focus-visible){outline:none}
+button:focus-visible,select:focus-visible{outline:2px solid #739eb5;outline-offset:3px}
+button:active:not(:disabled){transform:translateY(1px)}
+button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button svg+span{margin-left:7px}button span+svg{margin-left:10px}
+sub{font-size:.72em;vertical-align:-.24em}sup{font-size:.7em}i{font-family:Georgia,serif;font-weight:400}
+.app{height:100%;display:flex;flex-direction:column;background:linear-gradient(160deg,#f1f3f4 0%,#e8ecee 85%)}
+.appbar{height:66px;min-height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:linear-gradient(#fcfdfd,#f6f8f9);border-bottom:1px solid #d4dce0;box-shadow:0 1px 0 #ffffffb0;z-index:1}
+.identity{display:flex;gap:11px;align-items:center}.identity-mark{width:24px;height:27px;fill:none;stroke:#637986;stroke-width:1.2}
+.identity h1{font-size:17px;font-weight:600;letter-spacing:.03em;margin:0}
+.top-actions{display:flex;gap:24px;align-items:center}.phase-state{display:flex;gap:8px;align-items:center;font-size:12px;color:#697984}.phase-state i{width:6px;height:6px;border-radius:50%;background:#9ba8af}.phase-state.running i{background:#629b86;box-shadow:0 0 0 3px #629b8612}.phase-state.paused i{background:#b79462}.is-settings .phase-state{visibility:hidden}
+.text-button{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;border-radius:6px;color:#526775;padding:8px 10px;font-size:12px}.text-button:hover{background:#e5ebee;color:#2e566b}
+.main{display:flex;flex-direction:column;flex:1;min-height:0;padding:24px 28px 28px}
+.view{height:100%;min-height:0;display:none}.view.active{display:flex}
+.settings-view{gap:22px}.parameter-panel{width:310px;flex:none;display:flex;flex-direction:column;padding:28px 24px 24px;background:linear-gradient(145deg,#fff,#f9fafb);border:1px solid #d8e0e4;border-radius:12px;box-shadow:0 2px 3px #233d4b04,0 10px 22px #233d4b04,inset 0 1px 0 #fff}
+.section-heading{font-size:16px;font-weight:600;margin:0 0 34px}.field-block{margin-bottom:27px}.field-label{display:flex;align-items:baseline;justify-content:space-between;font-size:12px;font-weight:500;margin:0 0 12px;color:#536771}.field-label .range{font:12px var(--number);color:#7d8b94}
+.numeric-control{display:flex;height:64px;background:linear-gradient(#f6f8f9,#fff);border:1px solid #cdd7dc;border-radius:7px;overflow:hidden;box-shadow:inset 0 1px 3px #263c4710,0 1px 0 #fff;transition:border-color .15s,box-shadow .15s}.numeric-control:focus-within{border-color:#6994ab;box-shadow:0 0 0 3px #6295af19,inset 0 1px 2px #263c4706}
+.numeric-control input{width:100%;min-width:0;height:100%;background:transparent;border:0;padding:3px 15px;font:500 32px var(--number);color:#354751;-moz-appearance:textfield}.numeric-control input::-webkit-inner-spin-button,.numeric-control input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.step-buttons{width:29px;flex:none;height:100%;display:flex;flex-direction:column;border-left:1px solid #dde4e8;background:linear-gradient(#fefefe,#f0f3f5)}.step-buttons button{height:50%;padding:0;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:#71828b}.step-buttons button+button{border-top:1px solid #dfe5e9}.step-buttons button:hover{background:#e4ebef;color:#325d73}.step-buttons button svg{width:11px;height:11px}
+.paired-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.paired-fields .numeric-control{height:57px}.paired-fields .numeric-control input{font-size:26px;padding-left:12px}.left-color{color:var(--blue)}.right-color{color:var(--copper)}#initial-left{color:var(--blue)}#initial-right{color:var(--copper)}
+.distribution{margin:0 0 30px}.distribution-bar{height:4px;display:flex;border-radius:3px;overflow:hidden;background:#e0e5e8}.distribution-bar .left{width:50%;background:#6798af;transition:width .15s}.distribution-bar .right{flex:1;background:#c29476}.distribution-equation{display:flex;justify-content:flex-end;margin-top:10px;color:#7b8b94;font:12px var(--number)}
+.primary-button{width:100%;height:44px;border:1px solid #355e73;border-radius:7px;background:linear-gradient(#49758b,#355d73);box-shadow:inset 0 1px 0 #ffffff26,0 2px 3px #1c455526;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:500;letter-spacing:.025em}.primary-button:hover{background:linear-gradient(#527e95,#3d667d);box-shadow:inset 0 1px 0 #ffffff30,0 3px 6px #1c455529}
+.return-button{display:none;width:100%;height:38px;margin-top:12px;background:transparent;border:0;border-radius:6px;font-size:12px;color:#637d8a}.return-button:hover{background:#eaf0f3;color:#355f74}
+.preview-column{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}.stage-slot{flex:1;min-height:0;display:flex}
+.stage{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative;overflow:hidden;border:1px solid #28353d;border-radius:12px;background:radial-gradient(ellipse at 45% 32%,#35434c 0%,#2b373f 48%,#222c32 100%);color:#cbd7de;box-shadow:inset 0 1px 0 #ffffff13,0 2px 4px #142c3914,0 10px 24px #142c3910}
+.stage-head{height:57px;flex:none;display:flex;align-items:center;padding:0 22px;z-index:1;background:linear-gradient(#ffffff03,#ffffff00)}.stage-title{font-size:12px;font-weight:500;color:#c4d1d9}.stage-legend{display:flex;gap:20px;align-items:center;margin-left:auto;margin-right:19px;font-size:11px;color:#adbcc6}.legend-item{display:inline-flex;align-items:center;gap:7px}.legend-swatch{width:6px;height:6px;border-radius:50%;background:#8fb6c9;box-shadow:0 0 0 2px #8fb6c90b}.legend-swatch.right{background:#d2a17d}
+.stage-view-reset{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #ffffff1c;border-radius:6px;background:linear-gradient(#ffffff08,#ffffff02);color:#b2c1cb;box-shadow:inset 0 1px 0 #ffffff08}.stage-view-reset:hover{background:#ffffff12;border-color:#ffffff36;color:#e5edf2}.stage-view-reset svg{width:14px;height:14px}
+.canvas-wrap{flex:1;min-height:0;position:relative;margin:0 8px 13px}.canvas-wrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}.canvas-wrap canvas.dragging{cursor:grabbing}
+.simulation-view{flex-direction:column;gap:20px}.control-row{height:36px;min-height:36px;display:flex;align-items:center;justify-content:space-between;gap:16px}.controls-left{display:flex;gap:9px;align-items:center}.button{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 13px;border:1px solid #cbd5db;border-radius:6px;background:linear-gradient(#fff,#f6f8f9);box-shadow:inset 0 1px 0 #fff,0 1px 2px #1f3b4b0a;color:#4c6471;font-size:12px;white-space:nowrap}.button:hover{background:linear-gradient(#fff,#ebf0f3);border-color:#b7c7d0}.button.dark{min-width:84px;background:linear-gradient(#49758b,#355d73);border-color:#355e73;box-shadow:inset 0 1px 0 #ffffff26,0 1px 2px #1f3b4b19;color:#fff}.button.dark:hover{background:linear-gradient(#527e95,#3d667d)}
+.control-divider{height:17px;width:1px;background:#ced8de;margin:0 7px}.speed-label{font-size:12px;color:#73848f}.speed-control{height:32px;min-width:75px;border:1px solid #cfd9df;border-radius:6px;background:#f9fbfc;padding:0 9px;color:#4b6676;cursor:pointer}.initial-caption{font-size:12px;color:#758590}
+.metric-strip{display:grid;grid-template-columns:repeat(5,1fr);height:88px;min-height:88px;background:linear-gradient(105deg,#fff,#fcfdfd);border:1px solid #d5dfe4;border-radius:10px;box-shadow:0 1px 2px #25425205,inset 0 1px 0 #fff}.metric{position:relative;padding:14px 22px;min-width:0}.metric+.metric:before{content:"";position:absolute;left:0;top:21px;bottom:21px;width:1px;background:#e2e8eb}.metric-label{font-size:12px;color:#72838d;margin-bottom:5px}.metric-value{font:500 30px/1.15 var(--number);letter-spacing:-.015em}.metric-value.total,.metric-value.time{color:#364b58}.metric-value.left{color:var(--blue)}.metric-value.right{color:var(--copper)}.metric-value.fraction{color:#536e65}
+.workspace{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(360px,.85fr);gap:20px}
+.charts{display:grid;grid-template-rows:1fr 1fr;min-height:0;padding:0 21px;background:#fff;border:1px solid #d5dfe4;border-radius:12px;box-shadow:0 2px 3px #233d4b04,0 10px 22px #233d4b04}.chart-panel{position:relative;min-height:0;display:flex;flex-direction:column;padding:20px 0 9px}.chart-panel+.chart-panel{border-top:1px solid #e4eaed}.chart-header{height:34px;flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:10px}.chart-header h2{font-size:13px;font-weight:500;color:#445d6b;margin:0}.chart-legend{display:flex;gap:17px;font-size:11px;color:#75868f}.chart-legend span{display:flex;align-items:center;gap:5px}.chart-line-key{width:13px;height:2px;background:var(--blue)}.chart-line-key.right{background:var(--copper)}.chart-value{font:500 20px/1 var(--number);color:var(--green);letter-spacing:-.02em}
+.chart-canvas-wrap{position:relative;flex:1;min-height:0}.chart-canvas-wrap canvas{display:block;width:100%;height:100%}.chart-tooltip{position:absolute;pointer-events:none;display:none;background:#fffffffa;border:1px solid #cfdce3;border-radius:7px;box-shadow:0 4px 18px #1d3b4e18;padding:9px 12px;font-size:11px;line-height:1.9;color:#536975;z-index:3;white-space:nowrap}
+.drawer-shade{position:fixed;inset:0;display:none;justify-content:flex-end;z-index:20;background:#182b3a30}.drawer-shade.open{display:flex}.units-drawer{width:420px;max-width:90vw;height:100%;overflow:auto;background:#fcfdfd;box-shadow:-12px 0 40px #18273321;padding:28px 30px;animation:drawer-in .16s ease-out}.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}.drawer-head h2{font-size:18px;font-weight:600;margin:0}.drawer-close{width:30px;height:30px;border:0;border-radius:6px;background:transparent;display:flex;align-items:center;justify-content:center;color:#6b818f}.drawer-close:hover{background:#eaf0f3}
+.unit-section{margin-bottom:30px}.unit-section h3{font-size:13px;font-weight:600;color:#4f6978;margin:0 0 13px}.unit-section p{font-size:12px;color:#6d808b;line-height:1.95;margin:12px 0}.unit-section .small{font-size:11px;color:#778b97}.unit-table{width:100%;border-collapse:collapse}.unit-table td{font-size:12px;padding:11px 0;border-bottom:1px solid #e3eaee;color:#425f70}.unit-table td:first-child{color:#768993;width:100px}.unit-formula{border:1px solid #e1e9ed;border-radius:7px;background:#f0f5f7;padding:14px 16px;font-size:14px;color:#3e5a6b;line-height:1.8}.stat-action{margin-top:14px;border:1px solid #cfdae0;border-radius:6px;background:linear-gradient(#fff,#f4f7f8);padding:8px 12px;color:#4f6a79;font-size:12px}.stat-action:hover{background:#eaf0f3}
+.statistics .unit-table td:last-child{font-family:var(--number);font-variant-numeric:tabular-nums}.statistics[hidden]{display:none}
+@keyframes drawer-in{from{transform:translateX(12px);opacity:.5}to{transform:translateX(0);opacity:1}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+@media(max-width:1190px){.appbar{padding:0 22px}.main{padding:20px 22px 22px}.parameter-panel{width:278px;padding:25px 21px}.settings-view{gap:18px}.workspace{gap:16px;grid-template-columns:minmax(0,1.15fr) minmax(335px,.85fr)}.metric{padding-left:17px}.charts{padding:0 17px}.stage-head{padding:0 18px}}
+@media(max-height:760px){.appbar{height:58px;min-height:58px}.main{padding-top:18px;padding-bottom:20px}.simulation-view{gap:16px}.metric-strip{height:78px;min-height:78px}.metric{padding-top:11px;padding-bottom:10px}.metric-value{font-size:27px}.section-heading{margin-bottom:28px}.field-block{margin-bottom:24px}.numeric-control{height:58px}.stage-head{height:49px}.chart-panel{padding-top:16px}.chart-header{height:29px}.canvas-wrap{margin-bottom:10px}}
+@media(max-width:960px){.main{padding:16px}.appbar{padding:0 18px}.parameter-panel{width:250px;padding:23px 18px}.workspace{gap:14px;grid-template-columns:minmax(0,1fr) minmax(300px,.82fr)}.metric{padding-left:13px}.metric-value{font-size:25px}.metric-label{font-size:11px}.initial-caption{display:none}.stage-legend{gap:12px;margin-right:12px}.top-actions{gap:15px}}
+
+
+.field-label,.paired-fields .field-label{font-size:13px}.stage-title{font-size:13px}
+.stage-legend{font-size:12px}.metric-label{font-size:13px}.chart-header h2{font-size:14px}
+.primary-button{margin-top:auto}.metric-value{font-size:31px}.chart-value{font-size:21px}
+.chart-legend{font-size:12px}
+@media(max-height:760px){.metric-value{font-size:28px}.metric-label{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="app is-settings" id="app">
+  <header class="appbar">
+    <div class="identity">
+      <svg class="identity-mark" viewBox="0 0 30 34" aria-hidden="true"><path d="M15 2 27 9v15l-12 8L3 24V9Z"/><path d="m3 9 12 8 12-8M15 17v15"/><circle cx="10" cy="14" r="1.5" fill="#6e96af" stroke="none"/><circle cx="21" cy="22" r="1.5" fill="#be8c6b" stroke="none"/></svg>
+      <div><h1>粒子数涨落</h1></div>
+    </div>
+    <div class="top-actions">
+      <div class="phase-state" id="phase-status"><i></i><span id="phase-status-text">等待连接</span></div>
+      <button type="button" id="unit-help" class="text-button" aria-haspopup="dialog" title="单位、模型与统计"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6.7"/><path d="M9 8v4m0-7v.4"/></svg><span>实验信息</span></button>
+    </div>
+  </header>
+  <main class="main">
+    <section id="settings-view" class="view settings-view active" aria-label="参数设置">
+      <aside class="parameter-panel">
+        <h2 class="section-heading">初始条件</h2>
+        <div class="field-block">
+          <label class="field-label" for="total-particles"><span>总粒子数 <i>N</i></span><span class="range">1—1000</span></label>
+          <div class="numeric-control"><input id="total-particles" type="number" min="1" max="1000" step="1" value="8" inputmode="numeric" aria-label="总粒子数"><div class="step-buttons"><button type="button" data-step="total-particles:1" aria-label="增加总粒子数"><svg viewBox="0 0 12 12"><path d="m3 7 3-3 3 3"/></svg></button><button type="button" data-step="total-particles:-1" aria-label="减少总粒子数"><svg viewBox="0 0 12 12"><path d="m3 5 3 3 3-3"/></svg></button></div></div>
+        </div>
+        <div class="paired-fields">
+          <div class="field-block"><label class="field-label left-color" for="initial-left"><span>左区 <i>N</i><sub>L</sub></span></label><div class="numeric-control"><input id="initial-left" type="number" min="0" max="8" step="1" value="4" inputmode="numeric" aria-label="初始左区粒子数"><div class="step-buttons"><button type="button" data-step="initial-left:1" aria-label="增加初始左区粒子数"><svg viewBox="0 0 12 12"><path d="m3 7 3-3 3 3"/></svg></button><button type="button" data-step="initial-left:-1" aria-label="减少初始左区粒子数"><svg viewBox="0 0 12 12"><path d="m3 5 3 3 3-3"/></svg></button></div></div></div>
+          <div class="field-block"><label class="field-label right-color" for="initial-right"><span>右区 <i>N</i><sub>R</sub></span></label><div class="numeric-control"><input id="initial-right" type="number" min="0" max="8" step="1" value="4" inputmode="numeric" aria-label="初始右区粒子数"><div class="step-buttons"><button type="button" data-step="initial-right:1" aria-label="增加初始右区粒子数"><svg viewBox="0 0 12 12"><path d="m3 7 3-3 3 3"/></svg></button><button type="button" data-step="initial-right:-1" aria-label="减少初始右区粒子数"><svg viewBox="0 0 12 12"><path d="m3 5 3 3 3-3"/></svg></button></div></div></div>
+        </div>
+        <div class="distribution"><div class="distribution-bar"><span class="left" id="distribution-left"></span><span class="right"></span></div><div class="distribution-equation"><span id="distribution-ratio">50% / 50%</span></div></div>
+        <button type="button" id="start-simulation" class="primary-button" disabled><span id="start-label">开始仿真</span><svg viewBox="0 0 18 18"><path d="M3 9h11m-4-4 4 4-4 4"/></svg></button>
+        <button type="button" id="return-simulation" class="return-button">继续原实验</button>
+      </aside>
+      <div class="preview-column"><div class="stage-slot" id="settings-stage-slot"></div></div>
+    </section>
+    <section id="simulation-view" class="view simulation-view" aria-label="实时仿真">
+      <div class="control-row">
+        <div class="controls-left">
+          <button type="button" id="edit-parameters" class="button"><svg viewBox="0 0 18 18"><path d="m10 4-5 5 5 5"/></svg><span>参数</span></button>
+          <button type="button" id="pause-simulation" class="button dark"><svg id="pause-icon" viewBox="0 0 18 18"><path d="M6 4v10m6-10v10"/></svg><span id="pause-label">暂停</span></button>
+          <button type="button" id="restart-simulation" class="button"><svg viewBox="0 0 18 18"><path d="M14.3 7a5.6 5.6 0 1 0 .2 3M14.4 3.5V7H11"/></svg><span>新一轮</span></button>
+          <span class="control-divider"></span><label for="simulation-speed" class="speed-label">播放</label><select id="simulation-speed" class="speed-control" aria-label="播放速度"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+        </div>
+        <div class="initial-caption" id="initial-caption">初态 4 / 4</div>
+      </div>
+      <div class="metric-strip">
+        <div class="metric"><div class="metric-label">总数 <i>N</i></div><div class="metric-value total" id="metric-n">8</div></div>
+        <div class="metric"><div class="metric-label">左区 <i>N</i><sub>L</sub></div><div class="metric-value left" id="metric-left">4</div></div>
+        <div class="metric"><div class="metric-label">右区 <i>N</i><sub>R</sub></div><div class="metric-value right" id="metric-right">4</div></div>
+        <div class="metric"><div class="metric-label">左区比例 <i>p</i><sub>L</sub></div><div class="metric-value fraction" id="metric-fraction">0.500</div></div>
+        <div class="metric"><div class="metric-label">约化时间 <i>t</i> / τ</div><div class="metric-value time" id="metric-time">0.00</div></div>
+      </div>
+      <div class="workspace"><div class="stage-slot" id="simulation-stage-slot"></div><div class="charts">
+        <section class="chart-panel"><div class="chart-header"><h2>左右粒子数</h2><div class="chart-legend"><span><i class="chart-line-key"></i>N<sub>L</sub></span><span><i class="chart-line-key right"></i>N<sub>R</sub></span></div></div><div class="chart-canvas-wrap"><canvas id="count-canvas" aria-label="左右粒子数随约化时间变化的曲线"></canvas><div class="chart-tooltip" id="count-tooltip"></div></div></section>
+        <section class="chart-panel"><div class="chart-header"><h2>归一化熵 <i>S</i><sup>*</sup></h2><span class="chart-value" id="stat-entropy" title="当前归一化熵">—</span></div><div class="chart-canvas-wrap"><canvas id="entropy-canvas" aria-label="归一化熵随约化时间变化的曲线"></canvas><div class="chart-tooltip" id="entropy-tooltip"></div></div></section>
+      </div></div>
+    </section>
+  </main>
+</div>
+<section class="stage" id="scene-stage"><div class="stage-head"><span class="stage-title" id="stage-title">初始分布</span><div class="stage-legend"><span class="legend-item"><i class="legend-swatch"></i>左区</span><span class="legend-item"><i class="legend-swatch right"></i>右区</span></div><button type="button" id="reset-camera" class="stage-view-reset" title="复位视角" aria-label="复位视角"><svg viewBox="0 0 18 18"><path d="M14.4 7A5.7 5.7 0 1 0 14 12M14.5 3.5V7H11"/></svg></button></div><div class="canvas-wrap"><canvas id="scene-canvas" aria-label="三维硬球运动，可拖动旋转视角" title="拖动旋转 · 滚轮缩放 · 双击复位"></canvas></div></section>
+<div class="drawer-shade" id="unit-drawer-shade"><aside class="units-drawer" role="dialog" aria-modal="true" aria-labelledby="units-title"><div class="drawer-head"><h2 id="units-title">实验信息</h2><button type="button" id="close-unit-help" class="drawer-close" aria-label="关闭单位说明"><svg viewBox="0 0 18 18"><path d="m4 4 10 10M14 4 4 14"/></svg></button></div><section class="unit-section statistics" id="statistics-panel" hidden><h3>当前统计</h3><table class="unit-table"><tr><td>最大归一化熵</td><td id="stat-entropy-max">—</td></tr><tr><td>σ(p<sub>L</sub>)</td><td id="stat-sigma">—</td></tr><tr><td>样本数</td><td id="stat-samples">0</td></tr><tr><td>独立粒子参考</td><td id="stat-reference">—</td></tr><tr><td>统计起点 t/τ</td><td id="foot-status">0</td></tr><tr><td>Tkin/T₀</td><td id="temperature-foot">1.000</td></tr></table><button type="button" id="reset-statistics" class="stat-action">重新统计</button></section><section class="unit-section"><h3>约化单位</h3><table class="unit-table"><tr><td>长度</td><td>粒子直径 d</td></tr><tr><td>容器尺寸</td><td>54 × 32 × 24 d</td></tr><tr><td>质量</td><td>单粒子质量 m</td></tr><tr><td>能量</td><td>参考热能 k<sub>B</sub>T₀</td></tr><tr><td>时间</td><td>τ = d √(m / k<sub>B</sub>T₀)</td></tr><tr><td>速度</td><td>√(k<sub>B</sub>T₀ / m)</td></tr></table><p>程序采用 d = m = k<sub>B</sub>T₀ = 1。横轴 t/τ 为无量纲时间；指定实际粒径、质量与温度后，才可换算为秒。</p></section><section class="unit-section"><h3>归一化熵</h3><div class="unit-formula">S<sup>*</sup> = ln C(N, N<sub>L</sub>) / (N ln 2)</div><p>按左右分区的组合数计算。虚线表示给定 N 下的最大值，有限 N 时低于 1。</p></section><section class="unit-section"><h3>相对涨落</h3><div class="unit-formula">p<sub>L</sub> = N<sub>L</sub> / N<br>σ(p<sub>L</sub>)</div><p>σ 为当前采样阶段左区比例的标准差。1/(2√N) 是独立粒子在平衡时的参考值，可在接近平衡后重新统计。</p></section><section class="unit-section"><h3>模型与操作</h3><p>拖动视窗旋转，滚轮缩放，双击或点击右上角按钮复位。</p><p>每轮随机生成位置和初速度，随后按弹性硬球模型运动。中央平面为计数分界面，播放倍率控制显示速度。</p><p class="small">动能温标 Tkin/T₀ = 2K/(3Nk<sub>B</sub>T₀)，N=1 时表示单粒子的能量标定。</p></section></aside></div>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var state=null,bridge=null,connected=false,pending=null,queue=[],id0=0;
+var draft={n:8,left:4},ratio0=.5,phase0=null,edited=false,revision=0;
+var revs=Object.create(null);
+var scene=$('scene-canvas'),stage=$('scene-stage'),ctx0=scene.getContext('2d');
+var size0={w:0,h:0,dpr:1},camera={yaw:-.31,elevation:.19,zoom:1},drag=null;
+var redraw=true,redraw2=true,paint0=0,transition=null;
+var chart={},hover={count:null,entropy:null};
+var css={blue:'#397591',copper:'#b47a55',green:'#507c6b'};
+$('settings-stage-slot').appendChild(stage);
+function array(v){return Array.isArray(v)?v:(v===null||typeof v==='undefined'?[]:[v]);}
+function positions(v){v=array(v);return v.length&&typeof v[0]==='number'?[v]:v;}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+function text(id,value){var el=$(id);value=String(value);if(el.textContent!==value)el.textContent=value;}
+function fixed(v,d){return Number(v).toFixed(d);}
+function focused(){return document.activeElement===$('total-particles')||document.activeElement===$('initial-left')||document.activeElement===$('initial-right');}
+function waiting(name){if(pending&&pending.action===name)return true;for(var i=0;i<queue.length;i++)if(queue[i].action===name)return true;return false;}
+function normalize(){draft.n=clamp(Math.round(Number(draft.n)),1,1000);draft.left=clamp(Math.round(Number(draft.left)),0,draft.n);}
+function showdraft(force){
+ normalize();var vals={'total-particles':draft.n,'initial-left':draft.left,'initial-right':draft.n-draft.left};
+ Object.keys(vals).forEach(function(id){if(force||document.activeElement!==$(id))$(id).value=vals[id];});
+ $('initial-left').max=draft.n;$('initial-right').max=draft.n;
+ $('distribution-left').style.width=(100*draft.left/draft.n)+'%';
+ text('distribution-ratio',Math.round(100*draft.left/draft.n)+'% / '+Math.round(100*(draft.n-draft.left)/draft.n)+'%');
+}
+function readfield(id,commit){
+ var raw=$(id).value;if(raw===''&&!commit)return;
+ var n0=draft.n,left0=draft.left;
+ var value=Math.round(Number(raw));
+ if(id==='total-particles'){draft.n=clamp(value,1,1000);draft.left=clamp(Math.round(draft.n*ratio0),0,draft.n);}
+ else if(id==='initial-left')draft.left=clamp(value,0,draft.n);
+ else draft.left=draft.n-clamp(value,0,draft.n);
+ if(draft.n!==n0||draft.left!==left0){revision++;edited=true;}
+ showdraft(commit);
+}
+function commit(id){
+ if(id)readfield(id,true);showdraft(true);
+ send('draft',{n:draft.n,left:draft.left});
+}
+['total-particles','initial-left','initial-right'].forEach(function(id){
+ $(id).addEventListener('focus',function(){if(id==='total-particles')ratio0=draft.left/draft.n;});
+ $(id).addEventListener('input',function(){readfield(id,false);});
+ $(id).addEventListener('change',function(){commit(id);});
+ $(id).addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();commit(id);$(id).blur();}if(e.key==='Escape'){showdraft(true);$(id).blur();}});
+});
+Array.prototype.forEach.call(document.querySelectorAll('[data-step]'),function(button){
+ button.addEventListener('click',function(){var parts=button.getAttribute('data-step').split(':'),id=parts[0];if(id==='total-particles')ratio0=draft.left/draft.n;$(id).value=Number($(id).value)+Number(parts[1]);commit(id);});
+});
+function send(action,values){
+ var packet={kind:'action',id:++id0,action:action};Object.keys(values||{}).forEach(function(key){packet[key]=values[key];});
+ if(action==='draft'||action==='start')revs[packet.id]=revision;
+ if(action==='draft'||action==='speed')queue=queue.filter(function(item){if(item.action===action){delete revs[item.id];return false;}return true;});
+ queue.push(packet);buttons();pump();
+}
+function pump(){if(pending||!queue.length)return;pending=queue.shift();buttons();bridge.Data=pending;}
+function buttons(){
+ var launching=waiting('start')||waiting('restart');
+ $('start-simulation').disabled=!connected||launching;
+ $('restart-simulation').disabled=!connected||launching;
+ $('pause-simulation').disabled=!connected||launching;
+ $('edit-parameters').disabled=!connected||launching;
+ $('return-simulation').disabled=!connected||launching;
+ text('start-label',launching?'正在开始…':'开始仿真');
+ $('start-simulation').setAttribute('aria-busy',launching?'true':'false');
+}
+$('start-simulation').addEventListener('click',function(){
+ var focused=document.activeElement;
+ if(focused&&['total-particles','initial-left','initial-right'].indexOf(focused.id)>=0)readfield(focused.id,true);
+ showdraft(true);send('start',{n:draft.n,left:draft.left});
+});
+$('pause-simulation').addEventListener('click',function(){send('togglePause');});
+$('restart-simulation').addEventListener('click',function(){send('restart');});
+$('edit-parameters').addEventListener('click',function(){send('settings');});
+$('return-simulation').addEventListener('click',function(){send('return');});
+$('simulation-speed').addEventListener('change',function(){send('speed',{value:Number(this.value)});});
+$('reset-statistics').addEventListener('click',function(){send('resetStats');});
+function units(open){$('unit-drawer-shade').classList.toggle('open',open);if(open)$('close-unit-help').focus();else $('unit-help').focus();}
+$('unit-help').addEventListener('click',function(){units(true);});
+$('close-unit-help').addEventListener('click',function(){units(false);});
+$('unit-drawer-shade').addEventListener('click',function(e){if(e.target===this)units(false);});
+document.addEventListener('keydown',function(e){
+ if(!$('unit-drawer-shade').classList.contains('open'))return;
+ if(e.key==='Escape'){e.preventDefault();units(false);}
+ if(e.key==='Tab'){
+  var items=Array.prototype.filter.call(document.querySelectorAll('.units-drawer button'),function(el){return !el.disabled&&el.offsetParent!==null;}),index=items.indexOf(document.activeElement);
+  if(items.length){e.preventDefault();items[(index+(e.shiftKey?-1:1)+items.length)%items.length].focus();}
+ }
+});
+function applystate(next){
+ if(next.kind!=='state')return;
+ var now=performance.now(),old=state,ack=Number(next.ackId);
+ if(pending&&ack===pending.id){
+  if((pending.action==='draft'||pending.action==='start')&&revs[pending.id]===revision)edited=false;
+  delete revs[pending.id];pending=null;
+ }
+ if(old&&next.sequence<old.sequence){
+  buttons();if(!pending&&queue.length)setTimeout(pump,0);return;
+ }
+ var phase1=next.phase==='simulation'?'simulation':'settings';
+ next.positions=positions(next.positions);next.historyTime=array(next.historyTime);next.historyLeft=array(next.historyLeft);next.historyEntropy=array(next.historyEntropy);next.box=array(next.box);
+ var interp=old&&old.phase==='simulation'&&phase1==='simulation'&&old.n===next.n&&Number(next.time)>Number(old.time)&&old.positions.length===next.positions.length;
+ transition=interp?{from:old.positions,to:next.positions,start:now,duration:clamp(now-(old._received),22,90)}:null;
+ next._received=now;state=next;
+ if(phase0!==phase1){
+  $('settings-view').classList.toggle('active',phase1==='settings');$('simulation-view').classList.toggle('active',phase1==='simulation');
+  $(phase1==='settings'?'settings-stage-slot':'simulation-stage-slot').appendChild(stage);
+  hidetip('count');hidetip('entropy');redraw=true;redraw2=true;
+ }
+ if(phase0!==phase1||!old||(!focused()&&!edited&&!waiting('draft')&&!waiting('start'))){
+  draft.n=Number(next.draftN);draft.left=Number(next.draftLeft);showdraft(true);
+  if(phase0!==phase1){revision++;edited=false;}
+ }
+ phase0=phase1;
+ $('app').classList.toggle('is-settings',phase1==='settings');
+ $('statistics-panel').hidden=phase1!=='simulation';
+ $('return-simulation').style.display=next.started?'block':'none';
+ text('stage-title',phase1==='settings'?'初始分布':'粒子运动');
+ text('phase-status-text',phase1==='settings'?'初态预览':(next.paused?'已暂停':'运行中'));
+ $('phase-status').className='phase-state'+(phase1==='simulation'?(next.paused?' paused':' running'):'');
+ text('pause-label',next.paused?'继续':'暂停');
+ $('pause-icon').innerHTML=next.paused?'<path d="m6 3 8 6-8 6Z"/>':'<path d="M6 4v10m6-10v10"/>';
+ text('metric-n',next.n);text('metric-left',next.left);text('metric-right',next.right);
+ text('metric-fraction',fixed(next.fraction,3));text('metric-time',fixed(next.time,2));
+ text('initial-caption','初态 '+next.initialLeft+' / '+next.initialRight);
+ if(!waiting('speed'))$('simulation-speed').value=String(Number(next.speed));
+ text('stat-entropy',fixed(next.entropy,4));text('stat-entropy-max',fixed(next.entropyMax,5));
+ text('stat-sigma',Number(next.statsCount)>=2?fixed(next.sigma,5):'—');
+ text('stat-samples',Number(next.statsCount));text('stat-reference',fixed(next.referenceSigma,5));
+ text('temperature-foot',fixed(next.temperature,3));
+ text('foot-status',fixed(next.statsFrom,1));
+ redraw=true;redraw2=true;buttons();
+ if(!pending&&queue.length)setTimeout(pump,0);
+}
+window.setup=function(component){
+ bridge=component;connected=true;buttons();
+ component.addEventListener('DataChanged',function(){applystate(component.Data);});
+ applystate(component.Data);send('ready');
+};
+window.ParticleLabUI={applyState:applystate,getState:function(){return state;},getDraft:function(){return {n:draft.n,left:draft.left};},getPendingAction:function(){return pending;},isReady:function(){return connected;},resetCamera:function(){resetcamera();}};
+
+function resize(canvas){
+ var rect=canvas.getBoundingClientRect(),ratio=Math.min(2,window.devicePixelRatio),w=Math.max(1,Math.round(rect.width)),h=Math.max(1,Math.round(rect.height));
+ if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}
+ return {w:w,h:h,dpr:ratio};
+}
+function resetcamera(){camera={yaw:-.31,elevation:.19,zoom:1};redraw=true;}
+$('reset-camera').addEventListener('click',resetcamera);scene.addEventListener('dblclick',resetcamera);
+scene.addEventListener('pointerdown',function(e){drag={x:e.clientX,y:e.clientY,yaw:camera.yaw,elevation:camera.elevation};scene.classList.add('dragging');scene.setPointerCapture(e.pointerId);});
+scene.addEventListener('pointermove',function(e){if(drag){camera.yaw=drag.yaw+(e.clientX-drag.x)*.005;camera.elevation=clamp(drag.elevation+(e.clientY-drag.y)*.004,-.25,.7);redraw=true;}});
+function enddrag(){drag=null;scene.classList.remove('dragging');}scene.addEventListener('pointerup',enddrag);scene.addEventListener('pointercancel',enddrag);
+scene.addEventListener('wheel',function(e){e.preventDefault();camera.zoom=clamp(camera.zoom*Math.exp(-e.deltaY*.0006),.72,1.35);redraw=true;},{passive:false});
+function sprite(base,light){
+ var image=document.createElement('canvas');image.width=image.height=40;var ctx=image.getContext('2d'),g=ctx.createRadialGradient(14,12,1,20,20,19);
+ g.addColorStop(0,light);g.addColorStop(.23,base);g.addColorStop(.64,base);g.addColorStop(1,'#243a47');
+ ctx.fillStyle=g;ctx.beginPath();ctx.arc(20,20,18.6,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(224,237,245,.18)';ctx.lineWidth=.6;ctx.stroke();return image;
+}
+var sprites=[sprite('#82afc4','#dbeaf0'),sprite('#c79773','#f0d9bd')];
+function paintscene(now){
+ size0=resize(scene);var ctx=ctx0,w=size0.w,h=size0.h;if(w<2||h<2)return;
+ ctx.setTransform(size0.dpr,0,0,size0.dpr,0,0);ctx.clearRect(0,0,w,h);
+ var box=state?state.box:[54,32,24],hx=box[0]/2,hy=box[1]/2,hz=box[2]/2;
+ var cy=Math.cos(camera.yaw),sy=Math.sin(camera.yaw),ce=Math.cos(camera.elevation),se=Math.sin(camera.elevation),focal=180;
+ function projectraw(q){
+  var x=q[0]*cy+q[2]*sy,z=-q[0]*sy+q[2]*cy,y=q[1]*ce-z*se,depth=q[1]*se+z*ce,p=focal/(focal-depth);
+  return {x:x*p,y:y*p,z:depth,p:p};
+ }
+ var corners=[[-hx,-hy,-hz],[hx,-hy,-hz],[hx,hy,-hz],[-hx,hy,-hz],[-hx,-hy,hz],[hx,-hy,hz],[hx,hy,hz],[-hx,hy,hz]];
+ var raw=corners.map(projectraw),xmin=Infinity,xmax=-Infinity,ymin=Infinity,ymax=-Infinity;
+ raw.forEach(function(p){xmin=Math.min(xmin,p.x);xmax=Math.max(xmax,p.x);ymin=Math.min(ymin,p.y);ymax=Math.max(ymax,p.y);});
+ var scale=Math.min((w-94)/(xmax-xmin),(h-68)/(ymax-ymin))*camera.zoom;
+ var ox=w*.5-(xmin+xmax)*.5*scale,oy=h*.5+(ymin+ymax)*.5*scale;
+ function project(q){var p=projectraw(q);p.x=ox+p.x*scale;p.y=oy-p.y*scale;return p;}
+ var points=corners.map(project);
+ function polygon(ids,fill){ctx.beginPath();ids.forEach(function(id,k){var p=points[id];if(k)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);});ctx.closePath();ctx.fillStyle=fill;ctx.fill();}
+ var floor=ctx.createLinearGradient(0,h*.35,0,h);floor.addColorStop(0,'rgba(148,176,192,.018)');floor.addColorStop(1,'rgba(148,176,192,.07)');
+ polygon([0,1,5,4],floor);polygon([0,1,2,3],'rgba(194,213,225,.018)');
+ var edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+ ctx.lineWidth=.8;ctx.strokeStyle='rgba(170,192,207,.25)';
+ edges.forEach(function(e){ctx.beginPath();ctx.moveTo(points[e[0]].x,points[e[0]].y);ctx.lineTo(points[e[1]].x,points[e[1]].y);ctx.stroke();});
+ var plane=[[0,-hy,-hz],[0,-hy,hz],[0,hy,hz],[0,hy,-hz]].map(project);
+ ctx.beginPath();plane.forEach(function(p,i){if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);});ctx.closePath();ctx.fillStyle='rgba(194,172,126,.045)';ctx.fill();ctx.strokeStyle='rgba(190,168,126,.38)';ctx.lineWidth=.85;ctx.stroke();
+ var ps=state?state.positions:[],blend=1;
+ if(transition){blend=clamp((now-transition.start)/transition.duration,0,1);if(blend>=1)transition=null;}
+ var dots=[];
+ for(var i=0;i<ps.length;i++){
+  var q=ps[i];
+  if(transition){var a=transition.from[i];q=[a[0]+(q[0]-a[0])*blend,a[1]+(q[1]-a[1])*blend,a[2]+(q[2]-a[2])*blend];}
+  var p=project(q);p.side=q[0]<0?0:1;dots.push(p);
+ }
+ dots.sort(function(a,b){return a.z-b.z;});
+ var diameter=state?Number(state.diameter):1;
+ dots.forEach(function(p){var r=Math.max(1.55,scale*diameter*.5*p.p);ctx.drawImage(sprites[p.side],p.x-r,p.y-r,r*2,r*2);});
+ ctx.strokeStyle='rgba(183,202,215,.48)';ctx.lineWidth=.9;
+ edges.forEach(function(e){if((raw[e[0]].z+raw[e[1]].z)/2<0)return;ctx.beginPath();ctx.moveTo(points[e[0]].x,points[e[0]].y);ctx.lineTo(points[e[1]].x,points[e[1]].y);ctx.stroke();});
+}
+function ticks(maximum){
+ if(maximum<=1)return [0,.25,.5,.75,1];
+ var rough=maximum/4,power=Math.pow(10,Math.floor(Math.log(rough)/Math.LN10)),unit=rough/power;
+ var nice=unit<=1?1:(unit<=2?2:(unit<=2.5?2.5:(unit<=5?5:10)));
+ var step=Math.max(1,nice*power),result=[0];
+ for(var value=step;value<maximum;value+=step)if(maximum-value>=step*.22)result.push(value);
+ result.push(maximum);return result;
+}
+function ytext(value,max){if(max<=1)return String(Number(value.toFixed(2)));return Math.abs(value-Math.round(value))<1e-8?String(Math.round(value)):value.toFixed(1);}
+function paintchart(type){
+ var canvas=$(type==='count'?'count-canvas':'entropy-canvas'),ctx=canvas.getContext('2d'),size=resize(canvas),w=size.w,h=size.h;
+ if(w<3||h<3)return;ctx.setTransform(size.dpr,0,0,size.dpr,0,0);ctx.clearRect(0,0,w,h);
+ var left=38,right=w-10,top=9,bottom=h-38;if(bottom<=top)return;
+ var current=state?Number(state.time):0,xmin=Math.max(0,current-120),xmax=Math.max(30,current+1),ymax=type==='count'?(state?Math.max(1,state.n):8):1;
+ var X=function(t){return left+(t-xmin)/(xmax-xmin)*(right-left);},Y=function(v){return bottom-v/ymax*(bottom-top);};
+ ctx.font='11px "Microsoft YaHei UI","Microsoft YaHei","Segoe UI",Arial,sans-serif';ctx.textBaseline='middle';ctx.lineWidth=.6;
+ var yticks=type==='count'&&ymax===1?[0,1]:ticks(ymax);
+ yticks.forEach(function(value){var y=Y(value);ctx.strokeStyle='#e6ecef';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke();ctx.fillStyle='#718390';ctx.textAlign='right';ctx.fillText(ytext(value,ymax),left-8,y);});
+ for(var k=0;k<=4;k++){var time=xmin+(xmax-xmin)*k/4,x=X(time);ctx.strokeStyle='#f0f3f5';ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,bottom);ctx.stroke();ctx.fillStyle='#718390';ctx.textAlign=k===0?'left':(k===4?'right':'center');var text0=Math.abs(time-Math.round(time))<1e-7?String(Math.round(time)):time.toFixed(1);ctx.fillText(text0,x,bottom+13);}
+ ctx.fillStyle='#7a8d99';ctx.textAlign='right';ctx.fillText('t / τ',right,h-5);
+ ctx.strokeStyle='#d1dde4';ctx.beginPath();ctx.moveTo(left,top);ctx.lineTo(left,bottom);ctx.lineTo(right,bottom);ctx.stroke();
+ if(state){
+  var guide=type==='count'?state.n/2:state.entropyMax;
+  ctx.save();ctx.setLineDash([2,3]);ctx.strokeStyle=type==='count'?'#b4c0c9':'#a8bcb2';ctx.beginPath();ctx.moveTo(left,Y(guide));ctx.lineTo(right,Y(guide));ctx.stroke();ctx.restore();
+  var ts=state.historyTime.slice(),ls=state.historyLeft.slice(),es=state.historyEntropy.slice();
+  if(!ts.length||Number(ts[ts.length-1])<current-1e-9){ts.push(current);ls.push(state.left);es.push(state.entropy);}
+  function trace(values,color,steps){
+   ctx.beginPath();var begun=false,x0,y0;
+   for(var i=0;i<ts.length;i++){if(ts[i]<xmin-.001)continue;var x=X(ts[i]),y=Y(Number(values[i]));if(!begun){ctx.moveTo(x,y);begun=true;}else{if(steps)ctx.lineTo(x,y0);ctx.lineTo(x,y);}x0=x;y0=y;}
+   ctx.strokeStyle=color;ctx.lineWidth=1.7;ctx.lineJoin='round';ctx.stroke();
+   if(begun){ctx.beginPath();ctx.fillStyle=color;ctx.arc(x0,y0,2,0,Math.PI*2);ctx.fill();}
+  }
+  if(type==='count'){trace(ls,css.blue,true);trace(ls.map(function(v){return state.n-v;}),css.copper,true);}else trace(es,css.green,false);
+  chart[type]={times:ts,left:ls,entropy:es,X:X,Y:Y,plot:{left:left,right:right,top:top,bottom:bottom},min:xmin,max:xmax};
+  if(hover[type]!==null)painthover(type,ctx);
+ }
+}
+function hidetip(type){$(type+'-tooltip').style.display='none';hover[type]=null;}
+function painthover(type,ctx){
+ var info=chart[type];if(!info||!info.times.length||hover[type]===null)return;
+ var index=clamp(hover[type],0,info.times.length-1),x=info.X(info.times[index]),plot=info.plot;
+ ctx.save();ctx.strokeStyle='#b1c1cc';ctx.lineWidth=.7;ctx.setLineDash([2,3]);ctx.beginPath();ctx.moveTo(x,plot.top);ctx.lineTo(x,plot.bottom);ctx.stroke();ctx.restore();
+}
+['count','entropy'].forEach(function(type){
+ var canvas=$(type+'-canvas');
+ canvas.addEventListener('mousemove',function(e){
+  var info=chart[type];if(!info||!info.times.length||!state)return;var rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left;
+  if(x<info.plot.left||x>info.plot.right){hidetip(type);redraw2=true;return;}
+  var time=info.min+(x-info.plot.left)/(info.plot.right-info.plot.left)*(info.max-info.min),index=0;
+  for(var i=1;i<info.times.length;i++)if(Math.abs(info.times[i]-time)<Math.abs(info.times[index]-time))index=i;
+  hover[type]=index;redraw2=true;var tooltip=$(type+'-tooltip'),lines='t/τ　'+fixed(info.times[index],2);
+  if(type==='count')lines+='<br><span style="color:'+css.blue+'">N<sub>L</sub>　'+info.left[index]+'</span>　<span style="color:'+css.copper+'">N<sub>R</sub>　'+(state.n-info.left[index])+'</span>';
+  else lines+='<br>S<sup>*</sup>　'+fixed(info.entropy[index],5);
+  tooltip.innerHTML=lines;tooltip.style.display='block';tooltip.style.left=clamp(x+12,4,rect.width-tooltip.offsetWidth-4)+'px';tooltip.style.top=clamp(e.clientY-rect.top-50,4,rect.height-tooltip.offsetHeight-4)+'px';
+ });
+ canvas.addEventListener('mouseleave',function(){hidetip(type);redraw2=true;});
+});
+window.addEventListener('resize',function(){redraw=true;redraw2=true;});
+var observer=new ResizeObserver(function(){redraw=true;redraw2=true;});observer.observe(scene.parentElement);observer.observe($('count-canvas').parentElement);observer.observe($('entropy-canvas').parentElement);
+function animate(now){
+ if(redraw||transition||drag){paintscene(now);redraw=false;}
+ if(redraw2&&phase0==='simulation'){paintchart('count');paintchart('entropy');redraw2=false;}
+ paint0=now;window.requestAnimationFrame(animate);
+}
+showdraft(true);buttons();window.requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
